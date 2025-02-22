@@ -10,6 +10,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")  # Token do bot do Discord
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Chave da OpenAI
 
+# Configuração do cliente OpenAI
 openai.api_key = OPENAI_API_KEY
 client_openai = openai.OpenAI()
 
