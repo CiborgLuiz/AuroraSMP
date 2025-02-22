@@ -13,6 +13,7 @@ openai.api_key = OPENAI_API_KEY
 # Configurar intents do bot
 intents = discord.Intents.default()
 intents.messages = True
+intents.message_content = True
 client = discord.Client(intents=intents)
 
 # História do servidor
@@ -32,8 +33,11 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if client.user.mentioned_in(message) and message.author != client.user:
-        pergunta = message.content.replace(f"<@{client.user.id}}>", "").strip()
+    if message.author == client.user:
+        return
+    
+    if client.user.mentioned_in(message):
+        pergunta = message.content.replace(f"<@{client.user.id}>", "").strip()
         
         if "história" in pergunta.lower() or "contexto" in pergunta.lower():
             resposta = HISTORIA_SERVIDOR
