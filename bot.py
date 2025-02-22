@@ -1,57 +1,70 @@
 import discord
 import openai
+import asyncio
 import os
 from dotenv import load_dotenv
+from discord.ext import commands
 
-# Carregar variáveis de ambiente do .env
+# 🔑 Configuração do bot e API OpenAI
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")  # Token do bot do Discord
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Chave da OpenAI
 
 openai.api_key = OPENAI_API_KEY
+client_openai = openai.OpenAI()
 
-# Configurar intents do bot
+# ⚙️ Configuração do bot
 intents = discord.Intents.default()
 intents.messages = True
-intents.message_content = True
-client = discord.Client(intents=intents)
+intents.guilds = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# História do servidor
-HISTORIA_SERVIDOR = (
-    "No passado, uma organização científica misteriosa chamada Aurora, responsável por criar as maiores atrocidades em prol da ciência, "
-    "fez um experimento e criou uma criatura chamada Nightmare. Inicialmente contido, o Nightmare misteriosamente adquiriu um poder "
-    "inimaginável, escapou e se tornou um devorador de galáxias. Sua aparência lembra o sculk do Minecraft, e ele pode mudar de forma. "
-    "Cinco guerreiros mágicos - Wagner, TheClown, Jason Stolff e Franchesco - conseguiram selá-lo dentro da Aurora, uma organização "
-    "tão grande que pode ser do tamanho de uma galáxia. No presente, o selo do Nightmare está enfraquecendo. Para combater essa ameaça, "
-    "o Doutor Nefário, principal cientista da Aurora, decide sequestrar seres de diferentes universos e linhas do tempo para treiná-los e "
-    "fortalecê-los, pois o Nightmare continua a crescer em poder a cada ano que passa."
-)
+# 📖 História do Servidor
+HISTORIA_SERVIDOR = """
+No passado, a organização científica multiversal Aurora criou uma criatura chamada Nightmare.
+Ele saiu do controle e se tornou um devorador de galáxias. Cinco pessoas com poderes mágicos
+(Wagner, TheClown, Jason Stolff e Franchesco) conseguiram selá-lo. No presente, o selo está
+enfraquecendo, e o Doutor Nefário sequestra pessoas de diferentes universos para fortalecê-las
+e prepará-las contra a ameaça iminente.
+"""
 
-@client.event
+# 🛠️ Função para perguntar ao ChatGPT
+async def perguntar_ao_chatgpt(pergunta):
+    try:
+        resposta = client_openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Você é um assistente especializado no servidor Aurora SMP BR."},
+                {"role": "user", "content": pergunta}
+            ]
+        )
+        return resposta.choices[0].message.content
+    except Exception as e:
+        print(f"Erro na API do ChatGPT: {e}")
+        return "Desculpe, houve um erro ao processar sua pergunta."
+
+# 🗣️ Evento: Quando o bot estiver pronto
+@bot.event
 async def on_ready():
-    print(f'✅ Bot conectado como {client.user}')
+    print(f"✅ Bot conectado como {bot.user}")
 
-@client.event
+# 💬 Evento: Quando uma mensagem for enviada
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
-        return
-    
-    if client.user.mentioned_in(message):
-        pergunta = message.content.replace(f"<@{client.user.id}>", "").strip()
-        
-        if "história" in pergunta.lower() or "contexto" in pergunta.lower():
+    if message.author.bot:
+        return  # Ignorar mensagens de outros bots
+
+    if bot.user in message.mentions:
+        pergunta = message.content.replace(f"<@{bot.user.id}>", "").strip()
+
+        if "história" in pergunta.lower():
             resposta = HISTORIA_SERVIDOR
         else:
-            try:
-                resposta = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": pergunta}]
-                )["choices"][0]["message"]["content"]
-            except Exception as e:
-                resposta = "Desculpe, houve um erro ao processar sua pergunta."
-                print(e)
-        
+            resposta = await perguntar_ao_chatgpt(pergunta)
+
         await message.channel.send(resposta)
 
-# Iniciar o bot
-client.run(TOKEN)
+    await bot.process_commands(message)
+
+# 🚀 Iniciar o bot
+bot.run(TOKEN)
